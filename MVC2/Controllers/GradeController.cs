@@ -62,19 +62,30 @@ namespace MVC2.Controllers
 
         public IActionResult Create()
         {
+            ViewData["Subject"] = _context.Subjects.ToList();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("SubjectName")] Subject subject)
+        public async Task<IActionResult> Create([Bind("GradeName")] Grade grade, string[] subjectIndex)
         {
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Add(subject);
+                    _context.Add(grade);
                     await _context.SaveChangesAsync();
+
+                    foreach(var i in subjectIndex)
+                    {
+                        var sG = new GradeSubject();
+                        sG.SubjectId = Int32.Parse(i);
+                        sG.GradeId = grade.GradeId;
+                        _context.Add(sG);
+                    }
+                    await _context.SaveChangesAsync();
+
 
                     return RedirectToAction("Index");
                 }
@@ -84,7 +95,8 @@ namespace MVC2.Controllers
                 }
 
             }
-            return View(subject);
+            ViewData["Subject"] = _context.Subjects.ToList();
+            return View(grade);
         }
 
         public async Task<IActionResult> Edit(int? id)
@@ -94,26 +106,42 @@ namespace MVC2.Controllers
                 return NotFound();
             }
 
-            var subject = await _context.Subjects.FindAsync(id);
-            if (subject == null)
+            var grade = await _context.Grades.Include(s=>s.SubjectsTaught).Where(g=>g.GradeId == id).FirstAsync();
+            if (grade == null)
             {
                 return NotFound();
             }
 
-            return View(subject);
+            ViewData["Subject"] = _context.Subjects.ToList();
+            return View(grade);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit([Bind("SubjectId", "SubjectName")] Subject subject)
+        public async Task<IActionResult> Edit([Bind("GradeId", "GradeName")] Grade grade, string[] subjectIndex)
         {
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(subject);
+                    _context.Update(grade);
                     await _context.SaveChangesAsync();
+
+
+                    //delete grade subject
+                    var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
+                    _context.RemoveRange(gS);
+
+                    foreach (var i in subjectIndex)
+                    {
+                        var sG = new GradeSubject();
+                        sG.SubjectId = Int32.Parse(i);
+                        sG.GradeId = grade.GradeId;
+                        _context.Add(sG);
+                    }
+                    await _context.SaveChangesAsync();
+                    //add grade subject
 
                     return RedirectToAction("Index");
                 }
@@ -123,20 +151,26 @@ namespace MVC2.Controllers
                 }
             }
 
-            return View(subject);
+            ViewData["Subject"] = _context.Subjects.ToList();
+            return View(grade);
         }
 
         public async Task<IActionResult> Delete(int id)
         {
-            var subject = await _context.Subjects.FindAsync(id);
-            if (subject == null)
+            var grade = await _context.Grades.FindAsync(id);
+            if (grade == null)
             {
                 return RedirectToAction(nameof(Index));
             }
 
             try
             {
-                _context.Subjects.Remove(subject);
+                //remove grade subjects
+                var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
+                _context.RemoveRange(gS);
+
+                _context.Grades.Remove(grade);
+
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
