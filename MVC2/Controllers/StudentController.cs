@@ -21,6 +21,7 @@ namespace MVC2.Controllers
             ViewData["nameS"] = sortOrder == "Name" ? "NameD" : "Name";
             ViewData["dobS"] = sortOrder == "DOB" ? "DOBD" : "DOB";
             ViewData["gradeS"] = sortOrder == "Grade" ? "GradeD" : "Grade";
+            //
 
             if (searchString != null)
             {
