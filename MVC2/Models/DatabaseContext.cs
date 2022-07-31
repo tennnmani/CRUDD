@@ -21,7 +21,7 @@ namespace MVC2.Models
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.Grade)
                 .WithMany(g => g.Students)
-                .HasForeignKey(s => s.GradeId);
+                .HasForeignKey(s => s.GradeId).OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Grade>().ToTable("Grade").HasKey(g => g.GradeId);
             modelBuilder.Entity<Grade>().Property(p => p.GradeName).IsRequired().HasMaxLength(50);

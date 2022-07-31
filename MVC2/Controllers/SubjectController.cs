@@ -150,7 +150,11 @@ namespace MVC2.Controllers
 
             try
             {
+                var gS = _context.GradeSubjects.Where(g => g.SubjectId == subject.SubjectId);
+                _context.GradeSubjects.RemoveRange(gS);
+
                 _context.Subjects.Remove(subject);
+
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
