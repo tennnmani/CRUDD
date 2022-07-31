@@ -14,7 +14,22 @@
 <form asp-action="Index" method="get">
     <div class="form-actions no-color">
         <p>
-            Find by name: <input type="text" name="SearchString" value="@ViewData["CurrentFilter"]" />
+            <div class="form-group row">
+                <label for="FromDate" class="col-sm-2 col-form-label">Find by name:  </label>
+                <div class="col-sm-2">
+                    <input class="form-control" type="text" name="SearchString" value="@ViewData["CurrentFilter"]" />
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="FromDate" class="col-sm-2 col-form-label">From Date </label>
+                <div class="col-sm-2">
+                    <input type="date" value="@ViewData["FromDate"]" class="form-control" autocomplete="off" placeholder="YYYY-MM-DD" id="FromDate" name="FromDate" />
+                </div>
+                <label for="ToDate" class="col-sm-2 col-form-label">To Date </label>
+                <div class="col-sm-2">
+                    <input type="date" value="@ViewData["ToDate"]" class="form-control" autocomplete="off" placeholder="YYYY-MM-DD" id="ToDate" name="ToDate" />
+                </div>
+            </div>
             <input type="submit" value="Search" class="btn btn-default" /> |
             <a asp-action="Index">Back to Full List</a>
         </p>
@@ -25,7 +40,7 @@
     <thead>
         <tr>
             <th>
-               <a asp-action="Index" asp-route-sortOrder="@ViewData["nameS"]" asp-route-currentFilter="@ViewData["CurrentFilter"]"> Name </a>
+                <a asp-action="Index" asp-route-sortOrder="@ViewData["nameS"]" asp-route-currentFilter="@ViewData["CurrentFilter"]"> Name </a>
             </th>
             <th>
                 <a asp-action="Index" asp-route-sortOrder="@ViewData["dobS"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">Date Of Birth</a>
@@ -52,7 +67,7 @@
                 <td>
                     <a asp-action="Edit" asp-route-id="@item.StudentId">Edit</a> |
                     <a asp-action="Details" asp-route-id="@item.StudentId">Details</a> |
-                    <a asp-action="Delete"  onclick="return confirm('Are You Sure You Want To Delete?')"  asp-route-id="@item.StudentId">Delete</a>
+                    <a asp-action="Delete" onclick="return confirm('Are You Sure You Want To Delete?')" asp-route-id="@item.StudentId">Delete</a>
                 </td>
             </tr>
         }
@@ -68,6 +83,8 @@
    asp-route-sortOrder="@ViewData["CurrentSort"]"
    asp-route-pageNumber="@(Model.PageIndex - 1)"
    asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-FromDate="@ViewData["FromDate"]"
+   asp-route-ToDate="@ViewData["ToDate"]"
    class="btn btn-default @prevDisabled">
     Previous
 </a>
@@ -75,6 +92,8 @@
    asp-route-sortOrder="@ViewData["CurrentSort"]"
    asp-route-pageNumber="@(Model.PageIndex + 1)"
    asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   asp-route-FromDate="@ViewData["FromDate"]"
+   asp-route-ToDate="@ViewData["ToDate"]"
    class="btn btn-default @nextDisabled">
     Next
 </a>
