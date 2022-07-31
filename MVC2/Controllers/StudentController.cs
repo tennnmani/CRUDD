@@ -15,12 +15,18 @@ namespace MVC2.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? pageNumber)
+        public async Task<IActionResult> Index(string sortOrder,
+            string currentFilter, 
+            string searchString, 
+            int? pageNumber,
+            string FromDate,
+            string ToDate)
         {
 
             ViewData["nameS"] = sortOrder == "Name" ? "NameD" : "Name";
             ViewData["dobS"] = sortOrder == "DOB" ? "DOBD" : "DOB";
             ViewData["gradeS"] = sortOrder == "Grade" ? "GradeD" : "Grade";
+            //
 
             if (searchString != null)
             {
@@ -44,6 +50,15 @@ namespace MVC2.Controllers
                                        || s.FirstName.Contains(searchString)
                                         || s.Grade.GradeName.Contains(searchString)
                                         );
+            }
+
+
+            ViewData["FromDate"] = FromDate;
+            ViewData["ToDate"] = ToDate;
+
+            if (!String.IsNullOrEmpty(FromDate) && !String.IsNullOrEmpty(ToDate))
+            {
+                students = students.Where(s => s.DOB >= DateTime.Parse(FromDate) && s.DOB <= DateTime.Parse(ToDate));
             }
 
 
