@@ -1,25 +1,32 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MVC2.Helper;
 using MVC2.Models;
-using MVC2.ViewModels;
+using MVC2.Interface;
 
 namespace MVC2.Controllers
 {
     public class SubjectController : Controller
     {
         private readonly DatabaseContext _context;
+        private readonly IPagination _paginationinfo;
+        private readonly ISubject _subjectinfo;
 
-        public SubjectController(DatabaseContext context)
+        public SubjectController(DatabaseContext context, IPagination paginationInfo, ISubject subjectinfo)
         {
             _context = context;
+            _paginationinfo = paginationInfo;
+            _subjectinfo = subjectinfo;
         }
 
-        public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? pageNumber)
+        public async Task<IActionResult> Index(
+            string currentFilter,
+            string searchString,
+            int? pageNumber,
+            string fromDate,
+            string toDate,
+            string pageSize)
         {
-
-            ViewData["nameS"] = sortOrder == "Name" ? "NameD" : "Name";
 
             if (searchString != null)
             {
@@ -32,46 +39,20 @@ namespace MVC2.Controllers
 
             ViewData["CurrentFilter"] = searchString;
 
-            var subjects = (from s in _context.Subjects
-                            select s).AsNoTracking();
+            var subjects = _subjectinfo.getFiltteredSubject(searchString, fromDate, toDate);
 
-            var subjectClass = new List<SubjectClassVM>();
-
-            foreach (var s in subjects)
+            int ps = _paginationinfo.pageSize(pageSize);
+            if (ps == 0)
             {
-                var subc = new SubjectClassVM();
-                subc.SubjectId = s.SubjectId;
-                subc.SubjectName = s.SubjectName;
-                subc.Grade = (from g in _context.Grades
-                              join gs in _context.GradeSubjects on g.GradeId equals gs.GradeId
-                              where gs.SubjectId == s.SubjectId
-                              select g).AsNoTracking().ToList();
-
-                subjectClass.Add(subc);
+                ps = _subjectinfo.count();
             }
 
+            ViewData["CurrentFilter"] = searchString;
+            ViewData["FromDate"] = fromDate;
+            ViewData["ToDate"] = toDate;
+            ViewData["PageSize"] = ps;
 
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                subjectClass = subjectClass.Where(s => s.SubjectName.Contains(searchString)).ToList();
-            }
-
-
-            switch (sortOrder)
-            {
-                case "Name":
-                    subjectClass = subjectClass.OrderBy(s => s.SubjectName).ToList();
-                    break;
-                case "NameD":
-                    subjectClass = subjectClass.OrderByDescending(s => s.SubjectName).ToList();
-                    break;
-                default:
-                    break;
-            }
-
-
-            int pageSize = 3;
-            return View(await PaginatedList<SubjectClassVM>.CreateAsync(subjectClass, pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<Subject>.CreateAsync(subjects, pageNumber ?? 1, ps));
         }
 
         public IActionResult Create()
@@ -85,17 +66,8 @@ namespace MVC2.Controllers
         {
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Add(subject);
-                    await _context.SaveChangesAsync();
-
-                    return RedirectToAction("Index");
-                }
-                catch (Exception ex)
-                {
-
-                }
+                await _subjectinfo.createSubject(subject);
+                return RedirectToAction("Index");
 
             }
             return View(subject);
@@ -108,7 +80,7 @@ namespace MVC2.Controllers
                 return NotFound();
             }
 
-            var subject = await _context.Subjects.FindAsync(id);
+            var subject = await _subjectinfo.getSubject(id);
             if (subject == null)
             {
                 return NotFound();
@@ -119,22 +91,13 @@ namespace MVC2.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit([Bind("SubjectId","SubjectName")] Subject subject)
+        public async Task<IActionResult> Edit([Bind("SubjectId", "SubjectName")] Subject subject)
         {
 
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Update(subject);
-                    await _context.SaveChangesAsync();
-
-                    return RedirectToAction("Index");
-                }
-                catch (DbUpdateException ex)
-                {
-
-                }
+                await _subjectinfo.updateSubject(subject);
+                return RedirectToAction("Index");
             }
 
             return View(subject);
@@ -142,27 +105,15 @@ namespace MVC2.Controllers
 
         public async Task<IActionResult> Delete(int id)
         {
-            var subject = await _context.Subjects.FindAsync(id);
+            var subject = await _subjectinfo.getSubject(id);
             if (subject == null)
             {
                 return RedirectToAction(nameof(Index));
             }
 
-            try
-            {
-                var gS = _context.GradeSubjects.Where(g => g.SubjectId == subject.SubjectId);
-                _context.GradeSubjects.RemoveRange(gS);
+            await _subjectinfo.removeSubject(subject);
 
-                _context.Subjects.Remove(subject);
-
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateException /* ex */)
-            {
-                //Log the error (uncomment ex variable name and write a log.)
-                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
-            }
+            return RedirectToAction(nameof(Index));
         }
     }
 }

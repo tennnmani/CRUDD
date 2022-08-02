@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using MVC2.Interface;
 using MVC2.Models;
+using MVC2.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,12 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
 
 //provides helpful error information in the development environment for EF migrations errors. //added
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// adding DI
+builder.Services.AddScoped<IPagination, MockPagination>();
+builder.Services.AddScoped<IStudent, StudentServices>();
+builder.Services.AddScoped<IGrade, GradeServices>();
+builder.Services.AddScoped<ISubject, SubjectServices>();
 
 var app = builder.Build();
 
@@ -38,6 +46,7 @@ using (var scope = app.Services.CreateScope())
     DbInitializer.Initialize(context);
 }
 
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
@@ -47,6 +56,6 @@ app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Student}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
