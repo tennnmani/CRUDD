@@ -10,6 +10,8 @@ namespace MVC2.Models
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
         [Display(Name = "Date of Birth")]
         public DateTime DOB { get;set; }
+        public DateTime CreatedDate { get; set; }
+
 
         public int GradeId { get; set; }
         public Grade Grade { get; set; }

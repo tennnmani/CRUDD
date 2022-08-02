@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MVC2.Helper;
+using MVC2.Interface;
 using MVC2.Models;
 
 namespace MVC2.Controllers
@@ -9,25 +10,26 @@ namespace MVC2.Controllers
     public class StudentController : Controller
     {
         private readonly DatabaseContext _context;
+        private readonly IPagination _paginationinfo;
+        private readonly IStudent _studentinfo;
+        private readonly IGrade _gradeinfo;
 
-        public StudentController(DatabaseContext context)
+        public StudentController(DatabaseContext context, IPagination paginationInfo, IStudent studentinfo, IGrade gradeinfo)
         {
             _context = context;
+            _paginationinfo = paginationInfo;
+            _studentinfo = studentinfo;
+            _gradeinfo = gradeinfo;
         }
 
-        public async Task<IActionResult> Index(string sortOrder,
-            string currentFilter, 
-            string searchString, 
+        public async Task<IActionResult> Index(
+            string currentFilter,
+            string searchString,
             int? pageNumber,
-            string FromDate,
-            string ToDate)
+            string fromDate,
+            string toDate,
+            string pageSize)
         {
-
-            ViewData["nameS"] = sortOrder == "Name" ? "NameD" : "Name";
-            ViewData["dobS"] = sortOrder == "DOB" ? "DOBD" : "DOB";
-            ViewData["gradeS"] = sortOrder == "Grade" ? "GradeD" : "Grade";
-            //
-
             if (searchString != null)
             {
                 pageNumber = 1;
@@ -37,75 +39,36 @@ namespace MVC2.Controllers
                 searchString = currentFilter;
             }
 
+
+            var students = _studentinfo.getFiltteredStudent(searchString, fromDate, toDate);
+
+            int ps = _paginationinfo.pageSize(pageSize);
+
+            if (ps == 0)
+            {
+                ps = _studentinfo.count();
+            }
+
+
+
             ViewData["CurrentFilter"] = searchString;
+            ViewData["FromDate"] = fromDate;
+            ViewData["ToDate"] = toDate;
+            ViewData["PageSize"] = ps;
 
-            var students = (from s in _context.Students.Include(g=>g.Grade)
-                            //where
-                            //s.FirstName.Contains(searchString) || s.LastName.Contains(searchString) || s.Grade.GradeName.Contains(searchString)
-                            select  s);
-
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                students = students.Where(s => s.LastName.Contains(searchString)
-                                       || s.FirstName.Contains(searchString)
-                                        || s.Grade.GradeName.Contains(searchString)
-                                        );
-            }
-
-
-            ViewData["FromDate"] = FromDate;
-            ViewData["ToDate"] = ToDate;
-
-            if (!String.IsNullOrEmpty(FromDate) && !String.IsNullOrEmpty(ToDate))
-            {
-                students = students.Where(s => s.DOB >= DateTime.Parse(FromDate) && s.DOB <= DateTime.Parse(ToDate));
-            }
-
-
-            switch (sortOrder)
-            {
-                case "Name":
-                    students = students.OrderBy(s => s.FirstName);
-                    break;
-                case "NameD":
-                    students = students.OrderByDescending(s => s.FirstName);
-                    break;
-                case "DOB":
-                    students = students.OrderBy(s => s.DOB);
-                    break;
-                case "DOBD":
-                    students = students.OrderByDescending(s => s.DOB);
-                    break;
-                case "Grade":
-                    students = students.OrderBy(s => s.GradeId);
-                    break;
-                case "GradeD":
-                    students = students.OrderByDescending(s => s.GradeId);
-                    break;
-                default:
-                    break;
-            }
-
-            int pageSize = 4;
-            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, ps));
         }
 
 
         public async Task<IActionResult> Details(int id)
         {
-            var student = await _context.Students.Include(g => g.Grade)
-                                    .ThenInclude(st => st.SubjectsTaught)
-                                        .ThenInclude(i=>i.Subject)
-                                    .AsNoTracking().SingleAsync(s=>s.StudentId == id);
-            //var student = (from s in _context.Students.Include(g => g.Grade)
-            //                .ThenInclude(st=>st.SubjectsTaught)
-            //                where s.StudentId == id
-            //               select s);
+            var student = await _studentinfo.getStudentWGradeNSub(id);
+
             return View(student);
         }
         public IActionResult Create()
         {
-            ViewData["GradeList"] = new SelectList(_context.Grades, "GradeId", "GradeName");
+            ViewData["GradeList"] = new SelectList(_gradeinfo.getAllGrade(), "GradeId", "GradeName");
             return View();
         }
 
@@ -115,37 +78,27 @@ namespace MVC2.Controllers
         {
             if (ModelState.IsValid)
             {
-                try
-                {
-                     _context.Add(student);
-                    await _context.SaveChangesAsync();
+                await _studentinfo.createStudent(student);
+                return RedirectToAction("Index");
 
-                    return RedirectToAction("Index");
-                }
-                catch(Exception ex)
-                {
-
-                }
-                
             }
-            ViewData["GradeList"] = new SelectList(_context.Grades, "GradeId", "GradeName");
+            ViewData["GradeList"] = new SelectList(_gradeinfo.getAllGrade(), "GradeId", "GradeName");
             return View(student);
         }
 
         public async Task<IActionResult> Edit(int? id)
         {
-            if(id == null)
+            if (id == null)
+            {
+                return NotFound();
+            }
+            var student = await _studentinfo.getStudent(id);
+            if (student == null)
             {
                 return NotFound();
             }
 
-            var student = await _context.Students.FindAsync(id);
-            if(student == null)
-            {
-                return NotFound();
-            }
-
-            ViewData["GradeList"] = new SelectList(_context.Grades, "GradeId", "GradeName", student.GradeId);
+            ViewData["GradeList"] = new SelectList(_gradeinfo.getAllGrade(), "GradeId", "GradeName", student.GradeId);
             return View(student);
         }
 
@@ -153,45 +106,29 @@ namespace MVC2.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit([Bind("StudentId", "FirstName", "LastName", "DOB", "GradeId")] Student student)
         {
-           
+
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Update(student);
-                    await _context.SaveChangesAsync();
+                await _studentinfo.updateStudentAsync(student);
 
-                    return RedirectToAction("Index");
-                }
-                catch(DbUpdateException ex)
-                {
-
-                }
+                return RedirectToAction("Index");
             }
 
-            ViewData["GradeList"] = new SelectList(_context.Grades, "GradeId", "GradeName", student.GradeId);
+            ViewData["GradeList"] = new SelectList(_gradeinfo.getAllGrade(), "GradeId", "GradeName", student.GradeId);
             return View(student);
         }
 
         public async Task<IActionResult> Delete(int id)
         {
-            var student = await _context.Students.FindAsync(id);
+            var student = await _studentinfo.getStudent(id);
             if (student == null)
             {
                 return RedirectToAction(nameof(Index));
             }
 
-            try
-            {
-                _context.Students.Remove(student);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateException /* ex */)
-            {
-                //Log the error (uncomment ex variable name and write a log.)
-                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
-            }
+            await _studentinfo.removeStudent(student);
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }

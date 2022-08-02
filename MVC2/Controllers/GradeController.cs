@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MVC2.Helper;
+using MVC2.Interface;
 using MVC2.Models;
 using MVC2.ViewModels;
 
@@ -10,16 +11,26 @@ namespace MVC2.Controllers
     public class GradeController : Controller
     {
         private readonly DatabaseContext _context;
+        private readonly IPagination _paginationinfo;
+        private readonly IGrade _gradeinfo;
+        private readonly ISubject _subjectinfo;
 
-        public GradeController(DatabaseContext context)
+        public GradeController(DatabaseContext context, IPagination paginationInfo, IGrade gradeinfo, ISubject subjectinfo)
         {
             _context = context;
+            _paginationinfo = paginationInfo;
+            _gradeinfo = gradeinfo;
+            _subjectinfo = subjectinfo;
         }
 
-        public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? pageNumber)
+        public async Task<IActionResult> Index(
+            string currentFilter,
+            string searchString,
+            int? pageNumber,
+            string fromDate,
+            string toDate,
+            string pageSize)
         {
-
-            ViewData["nameS"] = sortOrder == "Name" ? "NameD" : "Name";
 
             if (searchString != null)
             {
@@ -32,37 +43,25 @@ namespace MVC2.Controllers
 
             ViewData["CurrentFilter"] = searchString;
 
-            var grade = await _context.Grades.Include(g => g.SubjectsTaught)
-                            .ThenInclude(s => s.Subject).AsNoTracking().ToListAsync();
+            var grade = _gradeinfo.getFiltteredGrade(searchString, fromDate, toDate);
 
-
-
-            if (!String.IsNullOrEmpty(searchString))
+            int ps = _paginationinfo.pageSize(pageSize);
+            if (ps == 0)
             {
-                grade = grade.Where(s => s.GradeName.Contains(searchString)).ToList();
+                ps = _gradeinfo.count();
             }
 
+            ViewData["CurrentFilter"] = searchString;
+            ViewData["FromDate"] = fromDate;
+            ViewData["ToDate"] = toDate;
+            ViewData["PageSize"] = ps;
 
-            switch (sortOrder)
-            {
-                case "Name":
-                    grade = grade.OrderBy(s => s.GradeName).ToList();
-                    break;
-                case "NameD":
-                    grade = grade.OrderByDescending(s => s.GradeName).ToList();
-                    break;
-                default:
-                    break;
-            }
-
-
-            int pageSize = 3;
-            return View(await PaginatedList<Grade>.CreateAsync(grade, pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<Grade>.CreateAsync(grade, pageNumber ?? 1, ps));
         }
 
         public IActionResult Create()
         {
-            ViewData["Subject"] = _context.Subjects.ToList();
+            ViewData["Subject"] = _subjectinfo.getAllSubject();
             return View();
         }
 
@@ -72,30 +71,12 @@ namespace MVC2.Controllers
         {
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Add(grade);
-                    await _context.SaveChangesAsync();
+                await _gradeinfo.createGrade(grade, subjectIndex);
 
-                    foreach(var i in subjectIndex)
-                    {
-                        var sG = new GradeSubject();
-                        sG.SubjectId = Int32.Parse(i);
-                        sG.GradeId = grade.GradeId;
-                        _context.Add(sG);
-                    }
-                    await _context.SaveChangesAsync();
-
-
-                    return RedirectToAction("Index");
-                }
-                catch (Exception ex)
-                {
-
-                }
+                return RedirectToAction("Index");
 
             }
-            ViewData["Subject"] = _context.Subjects.ToList();
+            ViewData["Subject"] = _subjectinfo.getAllSubject();
             return View(grade);
         }
 
@@ -106,13 +87,13 @@ namespace MVC2.Controllers
                 return NotFound();
             }
 
-            var grade = await _context.Grades.Include(s=>s.SubjectsTaught).Where(g=>g.GradeId == id).FirstAsync();
+            var grade = await _gradeinfo.getGradeWSubject(id);
             if (grade == null)
             {
                 return NotFound();
             }
 
-            ViewData["Subject"] = _context.Subjects.ToList();
+            ViewData["Subject"] = _subjectinfo.getAllSubject();
             return View(grade);
         }
 
@@ -123,62 +104,24 @@ namespace MVC2.Controllers
 
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Update(grade);
-                    await _context.SaveChangesAsync();
-
-
-                    //delete grade subject
-                    var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
-                    _context.RemoveRange(gS);
-
-                    foreach (var i in subjectIndex)
-                    {
-                        var sG = new GradeSubject();
-                        sG.SubjectId = Int32.Parse(i);
-                        sG.GradeId = grade.GradeId;
-                        _context.Add(sG);
-                    }
-                    await _context.SaveChangesAsync();
-                    //add grade subject
-
-                    return RedirectToAction("Index");
-                }
-                catch (DbUpdateException ex)
-                {
-
-                }
+                await _gradeinfo.updateGradeAsync(grade, subjectIndex);
+                return RedirectToAction("Index");
             }
 
-            ViewData["Subject"] = _context.Subjects.ToList();
+            ViewData["Subject"] = _subjectinfo.getAllSubject();
             return View(grade);
         }
 
         public async Task<IActionResult> Delete(int id)
         {
-            var grade = await _context.Grades.FindAsync(id);
+            var grade = await _gradeinfo.getGrade(id);
             if (grade == null)
             {
                 return RedirectToAction(nameof(Index));
             }
 
-            try
-            {
-                //remove grade subjects
-                var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
-                _context.RemoveRange(gS);
-
-                _context.Grades.Remove(grade);
-
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateException /* ex */)
-            {
-                //Log the error (uncomment ex variable name and write a log.)
-                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
-            }
+            await _gradeinfo.removeGrade(grade);
+            return RedirectToAction(nameof(Index));
         }
     }
 }
