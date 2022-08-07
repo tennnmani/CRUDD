@@ -12,7 +12,6 @@ namespace MVC2.Service
             ServicePointManager.Expect100Continue = true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            //Fetch the JSON string from URL.
             List<Exchange> exchange = new List<Exchange>();
             string apiUrl = "https://www.nrb.org.np/api/forex/v1/app-rate";
 
