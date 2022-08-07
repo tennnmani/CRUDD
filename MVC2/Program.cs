@@ -20,6 +20,7 @@ builder.Services.AddScoped<IPagination, MockPagination>();
 builder.Services.AddScoped<IStudent, StudentServices>();
 builder.Services.AddScoped<IGrade, GradeServices>();
 builder.Services.AddScoped<ISubject, SubjectServices>();
+builder.Services.AddScoped<IExchange, ExchangeServices>();
 
 var app = builder.Build();
 
