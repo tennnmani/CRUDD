@@ -12,29 +12,36 @@ namespace MVC2.Service
         {
             _context = context;
         }
+
         public int count()
         {
             return _context.Grades.Count();
         }
 
-        public async Task createGrade(Grade g, string[] subjectIndex)
+        public async Task createGrade(Grade grade, string[] subjectIndex)
         {
-            try
+            using (var transaction = _context.Database.BeginTransaction())
             {
-                _context.Add(g);
-                foreach (var i in subjectIndex)
+                try
                 {
-                    var sG = new GradeSubject();
-                    sG.SubjectId = Int32.Parse(i);
-                    sG.GradeId = g.GradeId;
-                    _context.Add(sG);
+                    _context.Add(grade);
+                    await _context.SaveChangesAsync();
+
+                    foreach (var i in subjectIndex)
+                    {
+                        var gradeSubject = new GradeSubject();
+                        gradeSubject.SubjectId = Int32.Parse(i);
+                        gradeSubject.GradeId = grade.GradeId;
+                        _context.Add(gradeSubject);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    transaction.Commit();
                 }
+                catch (Exception ex)
+                {
 
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-
+                }
             }
         }
 
@@ -76,42 +83,57 @@ namespace MVC2.Service
             return await _context.Grades.Include(s => s.SubjectsTaught).FirstAsync(g => g.GradeId == id);
         }
 
-        public async Task removeGrade(Grade g)
+        public async Task removeGrade(Grade grade)
         {
 
-            //remove grade subjects
-            var gS = _context.GradeSubjects.Where(g => g.GradeId == g.GradeId);
-            _context.RemoveRange(gS);
+            using (var transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    var gradeSubject = _context.GradeSubjects.Where(g => g.GradeId == g.GradeId);
+                    _context.RemoveRange(gradeSubject);
 
-            _context.Grades.Remove(g);
+                    _context.Grades.Remove(grade);
 
-            await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+
+                }
+
+            }
         }
 
         public async Task updateGradeAsync(Grade grade, string[] subjectIndex)
         {
-            try
+            using (var transaction = _context.Database.BeginTransaction())
             {
-                _context.Update(grade);
-
-                //delete grade subject
-                var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
-                _context.RemoveRange(gS);
-
-                foreach (var i in subjectIndex)
+                try
                 {
-                    var sG = new GradeSubject();
-                    sG.SubjectId = Int32.Parse(i);
-                    sG.GradeId = grade.GradeId;
-                    _context.Add(sG);
+                    _context.Update(grade);
+
+                    //delete grade subject
+                    var gS = _context.GradeSubjects.Where(g => g.GradeId == grade.GradeId);
+                    _context.RemoveRange(gS);
+
+                    foreach (var i in subjectIndex)
+                    {
+                        var sG = new GradeSubject();
+                        sG.SubjectId = Int32.Parse(i);
+                        sG.GradeId = grade.GradeId;
+                        _context.Add(sG);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    transaction.Commit();
+
                 }
+                catch (DbUpdateException ex)
+                {
 
-                await _context.SaveChangesAsync();
-
-            }
-            catch (DbUpdateException ex)
-            {
-
+                }
             }
         }
     }

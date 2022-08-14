@@ -1,5 +1,5 @@
-﻿@using MVC2.Helper
-@model PaginatedList<MVC2.Models.Student>
+﻿@model IEnumerable<MVC2.Models.Student>
+
 
 @{
     ViewData["Title"] = "Index";
@@ -41,6 +41,9 @@
     <thead>
         <tr>
             <th>
+
+            </th>
+            <th>
                 Name
             </th>
             <th>
@@ -56,9 +59,15 @@
         </tr>
     </thead>
     <tbody>
+        @{
+            int x = 1;
+        }
         @foreach (var item in Model)
         {
             <tr>
+                <td>
+                    @x
+                </td>
                 <td>
                     @Html.DisplayFor(modelItem => item.FirstName)  @Html.DisplayFor(modelItem => item.LastName)
                 </td>
@@ -73,17 +82,19 @@
                 </td>
                 <td>
                     <a asp-action="Edit" asp-route-id="@item.StudentId">Edit</a> |
-                    <a asp-action="Details" asp-route-id="@item.StudentId">Details</a> |
+                    <a asp-action="Details" asp-route-id="@item.StudentId"  asp-route-name="@item.FirstName">Details</a> |
                     <a asp-action="Delete" onclick="return confirm('Are You Sure You Want To Delete?')" asp-route-id="@item.StudentId">Delete</a>
                 </td>
             </tr>
+            x++;
         }
     </tbody>
 </table>
-
 @{
-    var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
-    var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+    var pagination = ViewData["Pagination"] as Pagination;  
+
+    var prevDisabled = pagination.PageIndex > 1 ? "" : "disabled";
+    var nextDisabled = pagination.PageIndex < pagination.TotalPage ? "" : "disabled";
 }
 <div class="dropdown">
     <button onclick="drpdwn()" class="dropbtn">
@@ -139,7 +150,7 @@
 
 <a asp-action="Index"
    asp-route-sortOrder="@ViewData["CurrentSort"]"
-   asp-route-pageNumber="@(Model.PageIndex - 1)"
+   asp-route-pageNumber="@(pagination.PageIndex - 1)"
    asp-route-currentFilter="@ViewData["CurrentFilter"]"
    asp-route-fromDate="@ViewData["FromDate"]"
    asp-route-toDate="@ViewData["ToDate"]"
@@ -148,9 +159,9 @@
     Previous
 </a>
 @{
-    for (var i = 1; Model.TotalPages >= i; i++)
+    for (var i = 1; pagination.TotalPage >= i; i++)
     {
-        if (i == Model.PageIndex)
+        if (i == pagination.PageIndex)
         {
             <span>@i</span>
         }
@@ -171,7 +182,7 @@
 }
 <a asp-action="Index"
    asp-route-sortOrder="@ViewData["CurrentSort"]"
-   asp-route-pageNumber="@(Model.PageIndex + 1)"
+   asp-route-pageNumber="@(pagination.PageIndex + 1)"
    asp-route-currentFilter="@ViewData["CurrentFilter"]"
    asp-route-fromDate="@ViewData["FromDate"]"
    asp-route-toDate="@ViewData["ToDate"]"
@@ -179,4 +190,3 @@
    class="btn btn-default @nextDisabled">
     Next
 </a>
-

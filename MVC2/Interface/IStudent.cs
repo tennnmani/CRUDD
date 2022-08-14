@@ -5,7 +5,7 @@ namespace MVC2.Interface
     public interface IStudent
     {
         IQueryable<Student> getFiltteredStudent(string searchs, string fromDate, string toDate);
-        Task<Student> getStudentWGradeNSub(int id);
+        Task<Student> getStudentWGradeNSub(int id, string name);
         Task<Student> getStudent(int? id);
         Task  updateStudentAsync(Student s);
         Task  createStudent(Student s);

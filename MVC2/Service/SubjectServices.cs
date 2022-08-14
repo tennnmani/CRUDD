@@ -67,19 +67,22 @@ namespace MVC2.Service
 
         public async Task removeSubject(Subject s)
         {
-            try
+            using (var transaction = _context.Database.BeginTransaction())
             {
-                var gS = _context.GradeSubjects.Where(g => g.SubjectId == s.SubjectId);
-                _context.GradeSubjects.RemoveRange(gS);
+                try
+                {
+                    var gS = _context.GradeSubjects.Where(g => g.SubjectId == s.SubjectId);
+                    _context.GradeSubjects.RemoveRange(gS);
 
-                _context.Subjects.Remove(s);
+                    _context.Subjects.Remove(s);
 
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException /* ex */)
-            {
-                //Log the error (uncomment ex variable name and write a log.)
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException /* ex */)
+                {
+                    //Log the error (uncomment ex variable name and write a log.)
 
+                }
             }
         }
 

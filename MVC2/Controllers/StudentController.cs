@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using MVC2.Helper;
 using MVC2.Interface;
 using MVC2.Models;
 
@@ -30,9 +29,10 @@ namespace MVC2.Controllers
             string toDate,
             string pageSize)
         {
+            int pageNum = pageNumber ?? 1;
             if (searchString != null)
             {
-                pageNumber = 1;
+                pageNum = 1;
             }
             else
             {
@@ -48,21 +48,28 @@ namespace MVC2.Controllers
             {
                 ps = _studentinfo.count();
             }
-
-
-
             ViewData["CurrentFilter"] = searchString;
             ViewData["FromDate"] = fromDate;
             ViewData["ToDate"] = toDate;
             ViewData["PageSize"] = ps;
 
-            return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, ps));
+            ViewData["Pagination"] = new Pagination()
+            {
+                PageSize = ps,
+                TotalPage = (int)Math.Ceiling(students.Count() / (double)ps),
+                PageIndex = pageNum,
+            };
+
+            var display = await students.Skip((pageNum - 1) * ps).Take(ps).ToListAsync();
+            return View(display);
+
+            //return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, ps));
         }
 
 
-        public async Task<IActionResult> Details(int id)
+        public async Task<IActionResult> Details(int id , string name)
         {
-            var student = await _studentinfo.getStudentWGradeNSub(id);
+            var student = await _studentinfo.getStudentWGradeNSub(id, name);
 
             return View(student);
         }
