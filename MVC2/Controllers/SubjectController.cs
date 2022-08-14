@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MVC2.Helper;
 using MVC2.Models;
 using MVC2.Interface;
 
@@ -27,17 +26,16 @@ namespace MVC2.Controllers
             string toDate,
             string pageSize)
         {
-
+            int pageNum = pageNumber ?? 1;
             if (searchString != null)
             {
-                pageNumber = 1;
+                pageNum = 1;
             }
             else
             {
                 searchString = currentFilter;
             }
 
-            ViewData["CurrentFilter"] = searchString;
 
             var subjects = _subjectinfo.getFiltteredSubject(searchString, fromDate, toDate);
 
@@ -48,11 +46,26 @@ namespace MVC2.Controllers
             }
 
             ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentFilter"] = searchString;
             ViewData["FromDate"] = fromDate;
             ViewData["ToDate"] = toDate;
             ViewData["PageSize"] = ps;
 
-            return View(await PaginatedList<Subject>.CreateAsync(subjects, pageNumber ?? 1, ps));
+            ViewData["Pagination"] = new Pagination()
+            {
+                PageSize = ps,
+                TotalPage = (int)Math.Ceiling(subjects.Count() / (double)ps),
+                PageIndex = pageNum,
+            };
+
+            
+            //ViewData["TotalPage"] = (int)Math.Ceiling(subjects.Count() / (double)ps);
+            //ViewData["PageIndex"] = pageNum;
+
+            var display = await subjects.Skip((pageNum - 1) * ps).Take(ps).ToListAsync();
+            return View(display);
+
+           // return View(await PaginatedList<Subject>.CreateAsync(subjects, pageNumber ?? 1, ps));
         }
 
         public IActionResult Create()

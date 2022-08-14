@@ -18,6 +18,7 @@ namespace MVC2.Models
             modelBuilder.Entity<Student>().ToTable("Student").HasKey(t => t.StudentId);
             modelBuilder.Entity<Student>().Property(p => p.FirstName).IsRequired().HasMaxLength(225);
             modelBuilder.Entity<Student>().Property(p => p.LastName).IsRequired().HasMaxLength(225);
+            modelBuilder.Entity<Student>().Property(p => p.Age).IsRequired();
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.Grade)
                 .WithMany(g => g.Students)
@@ -35,6 +36,7 @@ namespace MVC2.Models
 
             modelBuilder.Entity<GradeSubject>()
                 .HasKey(c => new { c.GradeId, c.SubjectId });
+            modelBuilder.Entity<GradeSubject>().Property<DateTime>("CreatedDate");
 
         }
 

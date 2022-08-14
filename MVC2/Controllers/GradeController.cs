@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using MVC2.Helper;
 using MVC2.Interface;
 using MVC2.Models;
 using MVC2.ViewModels;
@@ -31,6 +30,7 @@ namespace MVC2.Controllers
             string toDate,
             string pageSize)
         {
+            int pageNum = pageNumber ?? 1;
 
             if (searchString != null)
             {
@@ -56,7 +56,17 @@ namespace MVC2.Controllers
             ViewData["ToDate"] = toDate;
             ViewData["PageSize"] = ps;
 
-            return View(await PaginatedList<Grade>.CreateAsync(grade, pageNumber ?? 1, ps));
+            ViewData["Pagination"] = new Pagination()
+            {
+                PageSize = ps,
+                TotalPage = (int)Math.Ceiling(grade.Count() / (double)ps),
+                PageIndex = pageNum,
+            };
+
+            var display = await grade.Skip((pageNum - 1) * ps).Take(ps).ToListAsync();
+            return View(display);
+
+            //return View(await PaginatedList<Grade>.CreateAsync(grade, pageNumber ?? 1, ps));
         }
 
         public IActionResult Create()
