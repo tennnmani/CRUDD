@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using MVC2.Interface;
 using MVC2.Models;
 
@@ -37,6 +38,7 @@ namespace MVC2.Service
                     }
 
                     transaction.Commit();
+
                 }
                 catch (Exception ex)
                 {
@@ -47,7 +49,12 @@ namespace MVC2.Service
 
         public IQueryable<Grade> getAllGrade()
         {
-            return _context.Grades.AsNoTracking();
+            return _context.Grades;
+        }
+
+        private string getGradeListKey()
+        {
+            return $"GradeListKey";
         }
 
         public IQueryable<Grade> getFiltteredGrade(string searchs, string fromDate, string toDate)
@@ -74,18 +81,21 @@ namespace MVC2.Service
             {
                 return null;
             }
-
             return await _context.Grades.FindAsync(id);
+        }
+
+        private string getGradeKey(int id)
+        {
+            return $"GradeKey-{id}";
         }
 
         public async Task<Grade> getGradeWSubject(int? id)
         {
-            return await _context.Grades.Include(s => s.SubjectsTaught).FirstAsync(g => g.GradeId == id);
+            return await _context.Grades.Include(s => s.SubjectsTaught).FirstAsync(g => g.GradeId == id); 
         }
 
         public async Task removeGrade(Grade grade)
         {
-
             using (var transaction = _context.Database.BeginTransaction())
             {
                 try
@@ -97,6 +107,7 @@ namespace MVC2.Service
 
                     await _context.SaveChangesAsync();
                     transaction.Commit();
+
                 }
                 catch (Exception ex)
                 {

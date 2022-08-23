@@ -1,4 +1,5 @@
-﻿using MVC2.Interface;
+﻿using Microsoft.Extensions.Caching.Memory;
+using MVC2.Interface;
 using MVC2.Models;
 using Newtonsoft.Json;
 using System.Net;
@@ -7,6 +8,13 @@ namespace MVC2.Service
 {
     public class ExchangeServices : IExchange
     {
+        private readonly IMemoryCache _memoryCache;
+
+        public ExchangeServices(IMemoryCache memoryCache)
+        {
+            _memoryCache = memoryCache;
+        }
+
         public async Task<List<Exchange>> callExchange()
         {
             ServicePointManager.Expect100Continue = true;
@@ -17,10 +25,24 @@ namespace MVC2.Service
 
             HttpClient client = new HttpClient();
             HttpResponseMessage response = client.GetAsync(apiUrl).Result;
-            if (response.IsSuccessStatusCode)
+
+
+            var x = _memoryCache.TryGetValue(getCacheKey(DateTime.Now.Date.ToString()), out exchange);
+
+            
+
+           // _memoryCache.Set<List<Exchange>>(getCacheKey(DateTime.Now.AddDays(-1).Date.ToString()), exchange, new DateTimeOffset().AddDays(1));
+
+            if (!_memoryCache.TryGetValue(getCacheKey(DateTime.Now.Date.ToString()), out exchange))
             {
-                exchange = JsonConvert.DeserializeObject<List<Exchange>>(await response.Content.ReadAsStringAsync());
+                if (response.IsSuccessStatusCode)
+                {
+                    exchange = JsonConvert.DeserializeObject<List<Exchange>>(await response.Content.ReadAsStringAsync());
+                }
+                _memoryCache.Set<List<Exchange>>(getCacheKey(DateTime.Now.Date.ToString()), exchange, TimeSpan.FromDays(1));
+                _memoryCache.Remove(getCacheKey(DateTime.Now.AddDays(-1).Date.ToString()));
             }
+
             return exchange;
         }
 
@@ -28,50 +50,87 @@ namespace MVC2.Service
         {
             List<Exchange> exchange = await callExchange();
 
-            decimal fp = 0;
-            decimal fi = 0;
-            decimal tp = 0;
-            decimal ti = 0;
+            decimal fromPrice = 0;
+            decimal toPrice = 0;
 
-            if(fromRate == "NEP")
+
+            if (fromRate == "NEP")
             {
-                fp = 1;
+                fromPrice = 1;
             }
-            if(toRate == "NEP")
+            else
             {
-                tp = 1;
+                var data = (from e in exchange
+                            where e.iso3 == fromRate
+                            select new { e.buy, e.sell, e.unit }).FirstOrDefault();
+
+                if (buySell == "B")
+                    fromPrice = data.buy;
+                else
+                    fromPrice = data.sell;
+
+                decimal unit = data.unit;
+                if (unit > 1)
+                    fromPrice /= unit;
+
             }
 
-            foreach (var i in exchange)
+            if (toRate == "NEP")
             {
-                if (i.iso3 == fromRate)
-                {
-                    if (buySell == "B")
-                        fp = Decimal.Parse(i.buy);
-                    else
-                        fp = Decimal.Parse(i.sell);
-                    fi = i.unit;
-
-                    if (fi > 1)
-                    {
-                        fp = fp / fi;
-                    }
-                }
-                if (i.iso3 == toRate)
-                {
-                    if (buySell != "B")
-                        tp = Decimal.Parse(i.buy);
-                    else
-                        tp = Decimal.Parse(i.sell);
-                    ti = i.unit;
-
-                    if (ti > 1)
-                    {
-                        tp = tp / ti;
-                    }
-                }
+                toPrice = 1;
             }
-            return (tp / fp);
+            else
+            {
+                var data = (from e in exchange
+                            where e.iso3 == toRate
+                            select new { e.buy, e.sell, e.unit }).FirstOrDefault();
+
+                if (buySell == "B")
+                    toPrice = data.buy;
+                else
+                    toPrice = data.sell;
+
+                decimal unit = data.unit;
+                if (unit > 1)
+                    toPrice /= unit;
+
+            }
+
+            //foreach (var i in exchange)
+            //{
+            //    if (i.iso3 == fromRate)
+            //    {
+            //        if (buySell == "B")
+            //            fromPrice = Decimal.Parse(i.buy);
+            //        else
+            //            fromPrice = Decimal.Parse(i.sell);
+            //        fromRat = i.unit;
+
+            //        if (fromRat > 1)
+            //        {
+            //            fromPrice = fromPrice / fromRat;
+            //        }
+            //    }
+            //    if (i.iso3 == toRate)
+            //    {
+            //        if (buySell != "B")
+            //            toPrice = Decimal.Parse(i.buy);
+            //        else
+            //            toPrice = Decimal.Parse(i.sell);
+            //        toRat = i.unit;
+
+            //        if (toRat > 1)
+            //        {
+            //            toPrice = toPrice / toRat;
+            //        }
+            //    }
+            //}
+
+            return (fromPrice / toPrice);
+        }
+        private string getCacheKey(string date)
+        {
+            return $"exchangefor{date}";
         }
     }
 }
