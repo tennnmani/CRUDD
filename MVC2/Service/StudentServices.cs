@@ -54,6 +54,7 @@ namespace MVC2.Service
 
             var students = _context.Students.FromSqlRaw($"Exec GetStudentById  @id = {id} , @Name = {name}").ToList();
 
+            #region comments
 
             //count
             //var studentJoined = _context.Students
@@ -118,7 +119,7 @@ namespace MVC2.Service
             //                  group student.Age by grade.GradeName into agestudent
             //                  select new MasterVM { Name = agestudent.Key, Value = Convert.ToDecimal(agestudent.Average()) };
 
-
+            #endregion
 
             // join with multiple condition
             var result = (from subject in _context.Subjects

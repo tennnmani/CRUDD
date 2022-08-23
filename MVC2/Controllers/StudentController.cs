@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Console;
 using MVC2.Interface;
 using MVC2.Models;
 
@@ -13,12 +14,15 @@ namespace MVC2.Controllers
         private readonly IStudent _studentinfo;
         private readonly IGrade _gradeinfo;
 
-        public StudentController(DatabaseContext context, IPagination paginationInfo, IStudent studentinfo, IGrade gradeinfo)
+        private readonly ILogger<StudentController> _logger;
+
+        public StudentController(DatabaseContext context, IPagination paginationInfo, IStudent studentinfo, IGrade gradeinfo, ILogger<StudentController> logger)
         {
             _context = context;
             _paginationinfo = paginationInfo;
             _studentinfo = studentinfo;
             _gradeinfo = gradeinfo;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index(
@@ -39,7 +43,7 @@ namespace MVC2.Controllers
                 searchString = currentFilter;
             }
 
-
+            _logger.LogInformation("text adjfhliasb isjafb iasdf bsiadfbalidfb");
             var students = _studentinfo.getFiltteredStudent(searchString, fromDate, toDate);
 
             int ps = _paginationinfo.pageSize(pageSize);
